@@ -4,41 +4,70 @@
 #include <algorithm>
 #include <functional>
 
+/// <summary> 有序数组的交集、差集、并集 </summary>
+/// <typeparam name="IsUnique"> 是否为非重复数组 </typeparam>
+/// <param name="ContainerA"></param>
+/// <param name="ContainerB"></param>
+/// <returns></returns>
 
-//注意const_iterator的使用
-template<typename ElemType>
-bool FindLastElemPos(typename std::vector<ElemType>::const_iterator& Start,
-	typename std::vector<ElemType>::const_iterator End)
+template <bool IsUnique = false>
+std::vector<int> Intersection(const std::vector<int>& ContainerA, const std::vector<int>& ContainerB)
 {
-	if (End <= Start) return false;
-
-	auto Next = Start;
-	std::advance(Next, 1);
-
-	while (Next != End)
+	int ALen = (int)ContainerA.size();
+	if (ALen < 1)
 	{
-		if (*Start == *Next)
+		return {};
+	}
+
+	int BLen = (int)ContainerB.size();
+	if (BLen < 1)
+	{
+		return {};
+	}
+
+	std::vector<int> Result;
+	int i = 0, j = 0;
+
+	while ((i < ALen) && (j < BLen))
+	{
+		if constexpr (!IsUnique)
 		{
-			std::advance(Start, 1);
-			std::advance(Next, 1);
+			//每一轮i、j都会指向相同元素的最后一个
+			//对于交集，循环结束时遗留的元素无需加入结果数组
+			while (i + 1 < ALen && ContainerA[i] == ContainerA[i + 1])
+			{
+				i++;
+			}
+
+			while (j + 1 < ALen && ContainerB[j] == ContainerB[j + 1])
+			{
+				j++;
+			}
+		}
+
+		int AElem = ContainerA[i];
+		int BElem = ContainerB[j];
+
+		if (AElem < BElem)
+		{
+			++i;
+		}
+		else if (BElem < AElem)
+		{
+			++j;
 		}
 		else
 		{
-			break;
+			Result.push_back(AElem);
+			++i, ++j;
 		}
 	}
-	return true;
+
+	return Result;
 }
 
-/// <summary> 求交集 </summary>
-/// <typeparam name="ElemType"></typeparam>
-/// <typeparam name="Operation"></typeparam>
-/// <typeparam name="IsUniqueElem"></typeparam>
-/// <param name="ContainerA"></param>
-/// <param name="ContainerB"></param>
-/// <returns> 无重复元素数组 </returns>
-template <typename ElemType, bool IsUniqueElem = std::true_type::value>
-std::vector<ElemType> Intersection(const std::vector<ElemType>& ContainerA, const std::vector<ElemType>& ContainerB)
+template <bool IsUnique = false>
+std::vector<int> Difference(const std::vector<int>& ContainerA, const std::vector<int>& ContainerB)
 {
 	int ALen = (int)ContainerA.size();
 	if (ALen < 1)
@@ -52,58 +81,89 @@ std::vector<ElemType> Intersection(const std::vector<ElemType>& ContainerA, cons
 		return ContainerA;
 	}
 
-	std::vector<ElemType> Result;
+	std::vector<int> Result;
+	int i = 0, j = 0;
 
-	if constexpr (IsUniqueElem)
+	while ((i < ALen) && (j < BLen))
 	{
-		int i = 0, j = 0;
-		//无重复元素
-		while (i < ALen && j < BLen)
+		if constexpr (!IsUnique)
 		{
-			if (ContainerA[i] < ContainerB[j])
+			//每一轮i、j都会指向相同元素的最后一个
+			//因此对于差集，当循环结束时总是会遗留至少1个元素
+			while (i + 1 < ALen && ContainerA[i] == ContainerA[i + 1])
 			{
 				i++;
 			}
-			else if (ContainerA[j] < ContainerB[i])
+
+			while (j + 1 < ALen && ContainerB[j] == ContainerB[j + 1])
 			{
-				j++;
-			}
-			else
-			{
-				Result.push_back(ContainerA[i]);
-				i++;
 				j++;
 			}
 		}
-	}
-	else
-	{
-		auto StartA = ContainerA.begin();
-		auto StartB = ContainerB.begin();
-		auto EndA = ContainerA.end();
-		auto EndB = ContainerB.end();
 
-		while ((StartA != EndA) && (StartB != EndB))
+		int AElem = ContainerA[i];
+		int BElem = ContainerB[j];
+
+		if (AElem < BElem)
 		{
-			if (!FindLastElemPos<ElemType>(StartA, EndA) || !FindLastElemPos<ElemType>(StartB, EndB))
-			{
-				return {};
-			}
+			Result.push_back(AElem);
+			++i;
+		}
+		else if (BElem < AElem)
+		{
+			Result.push_back(BElem);
+			++j;
+		}
+		else
+		{
+			++i, ++j;
+		}
+	}
 
-			if (*StartA < *StartB)
+
+	while (i < ALen)
+	{
+		if constexpr (!IsUnique)
+		{
+			int AElem = ContainerA[i];
+			if (AElem != Result.back())
 			{
-				std::advance(StartA, 1);
+				Result.push_back(AElem);
 			}
-			else if (*StartB < *StartA)
+			i++;
+		}
+		else
+		{
+			Result.reserve(Result.size() + ALen - i);
+			while (i < ALen)
 			{
-				std::advance(StartB, 1);
+				Result.push_back(ContainerA[i]);
+				i++;
 			}
-			else
+			break;
+		}
+	}
+
+	while (j < BLen)
+	{
+		if constexpr (!IsUnique)
+		{
+			int BElem = ContainerB[j];
+			if (BElem != Result.back())
 			{
-				Result.push_back(*StartA);
-				std::advance(StartA, 1);
-				std::advance(StartB, 1);
+				Result.push_back(BElem);
 			}
+			j++;
+		}
+		else
+		{
+			Result.reserve(Result.size() + BLen - j);
+			while (j < BLen)
+			{
+				Result.push_back(ContainerB[j]);
+				j++;
+			}
+			break;
 		}
 	}
 
